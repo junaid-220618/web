@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Hangman Game</title>
+  <style>
+    /* General page styling */
+    body {
+      background: darkslateblue;
+      /* color: lightgray; */
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+      padding: 20px;
+    }
+
+    /* Title styling */
+    h1 {
+      margin: 20px 0;
+      letter-spacing: 6px;
+      color: deepskyblue;
+    }
+
+    /* Word display styling */
+    #word {
+      display: flex;
+      margin-top: 20px;
+    }
+    #word span {
+      border-bottom: 3px solid dodgerblue;
+      width: 30px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 5px;
+      font-size: 26px;
+      font-weight: bold;
+    }
+
+    /* Wrong letters styling */
+    #wrong {
+      margin: 15px;
+      color: red;
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    /* Hangman figure styling */
+    .figure {
+      stroke: deepskyblue;
+      stroke-width: 4;
+      fill: none;
+      margin-top: 20px;
+    }
+    .part {
+      display: none;
+    }
+
+    /* Popup for game end */
+    #popup {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(25, 25, 112, 0.8);
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    #popup div {
+      background: skyblue;
+      padding: 20px 30px;
+      border-radius: 10px;
+      text-align: center;
+      color: darkslateblue;
+      box-shadow: 0 5px 15px black;
+    }
+    #popup h2 {
+      margin: 0 0 15px;
+    }
+    #popup button {
+      padding: 10px 20px;
+      border: none;
+      background: steelblue;
+      color: lightgray;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    #popup button:hover {
+      background: royalblue;
+    }
+
+    /* Hint display styling */
+    #hintBox {
+      margin-top: 10px;
+      font-style: italic;
+      color: gold;
+      font-weight: bold;
+    }
+
+    /* Hint button styling */
+    #hintBtn {
+      margin-top: 10px;
+      padding: 8px 15px;
+      background: deepskyblue;
+      border: none;
+      color: darkslateblue;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    #hintBtn:hover {
+      background: dodgerblue;
+    }
+  </style>
+</head>
+<body>
+  <!-- Game title -->
+  <h1>Hangman</h1>
+
+  <!-- Hangman figure -->
+  <svg height="250" width="200" class="figure">
+    <!-- Gallows -->
+    <line x1="60" y1="20" x2="140" y2="20"/>
+    <line x1="140" y1="20" x2="140" y2="50"/>
+    <line x1="60" y1="20" x2="60" y2="230"/>
+    <line x1="20" y1="230" x2="100" y2="230"/>
+    <!-- Body parts (hidden initially) -->
+    <circle cx="140" cy="70" r="20" class="part"/>
+    <line x1="140" y1="90" x2="140" y2="150" class="part"/>
+    <line x1="140" y1="120" x2="120" y2="100" class="part"/>
+    <line x1="140" y1="120" x2="160" y2="100" class="part"/>
+    <line x1="140" y1="150" x2="120" y2="180" class="part"/>
+    <line x1="140" y1="150" x2="160" y2="180" class="part"/>
+  </svg>
+
+  <!-- Display for wrong letters -->
+  <div id="wrong"></div>
+  <!-- Display for the word -->
+  <div id="word"></div>
+
+  <!-- Hint button and display -->
+  <button id="hintBtn" onclick="showHint()">Show Hint</button>
+  <div id="hintBox"></div>
+
+  <!-- Popup for game end -->
+  <div id="popup">
+    <div>
+      <h2 id="msg"></h2>
+      <button onclick="start()">Play Again</button>
+    </div>
+  </div>
+
+  <script>
+    // Get DOM elements
+    const wordEl = document.getElementById("word");
+    const wrongEl = document.getElementById("wrong");
+    const popup = document.getElementById("popup");
+    const msg = document.getElementById("msg");
+    const parts = document.querySelectorAll(".part");
+    const hintBox = document.getElementById("hintBox");
+
+    // Word list with hints
+    const words = [
+      { word: "cat", hint: "A small pet animal" },
+      { word: "dog", hint: "Man’s best friend" },
+      { word: "book", hint: "You read it" },
+      { word: "wizard", hint: "A magical person" },
+      { word: "function", hint: "Reusable block of code" },
+      { word: "cryptography", hint: "Science of secret writing" },
+      { word: "hangman", hint: "The game you are playing" }
+    ];
+
+    let word, correct, wrong, playable, hint;
+
+    // Start a new game
+    function start() {
+      const chosen = words[Math.floor(Math.random() * words.length)];
+      word = chosen.word;
+      hint = chosen.hint;
+      correct = [];
+      wrong = [];
+      playable = true;
+      popup.style.display = "none";
+      hintBox.innerText = "";
+      showWord();
+      updateWrong();
+    }
+
+    // Display the word with guessed letters
+    function showWord() {
+      wordEl.innerHTML = word
+        .split("")
+        .map(letter => `<span>${correct.includes(letter) ? letter : ""}</span>`)
+        .join("");
+      if (wordEl.innerText === word) {
+        end("🎉 You Won!");
+      }
+    }
+
+    // Update wrong letters and hangman figure
+    function updateWrong() {
+      wrongEl.innerHTML = "Wrong: " + wrong.join(" ");
+      parts.forEach((part, index) => {
+        part.style.display = index < wrong.length ? "block" : "none";
+      });
+      if (wrong.length === parts.length) {
+        end("😕 You Lost! Word: " + word);
+      }
+    }
+
+    // End the game with a message
+    function end(message) {
+      msg.innerText = message;
+      popup.style.display = "flex";
+      playable = false;
+    }
+
+    // Show the hint
+    function showHint() {
+      hintBox.innerText = "💡 Hint: " + hint;
+    }
+
+    // Handle keypress events
+    window.addEventListener("keypress", (event) => {
+      if (!playable) return;
+      const letter = event.key.toLowerCase();
+      if (letter < "a" || letter > "z") return;
+      if (word.includes(letter)) {
+        if (!correct.includes(letter)) {
+          correct.push(letter);
+          showWord();
+        }
+      } else {
+        if (!wrong.includes(letter)) {
+          wrong.push(letter);
+          updateWrong();
+        }
+      }
+    });
+
+    // Start the game initially
+    start();
+  </script>
+</body>
+</html>
+
+
+
+<!-- <?php
+// words.php → provides random word + hint
+
+$words = [
+    ["word" => "cat", "hint" => "A small pet animal"],
+    ["word" => "dog", "hint" => "Man’s best friend"],
+    ["word" => "book", "hint" => "You read it"],
+    ["word" => "wizard", "hint" => "A magical person"],
+    ["word" => "function", "hint" => "Reusable block of code"],
+    ["word" => "cryptography", "hint" => "Science of secret writing"],
+    ["word" => "hangman", "hint" => "The game you are playing"]
+];
+
+// pick random word
+$chosen = $words[array_rand($words)];
+
+// return JSON response
+header("Content-Type: application/json");
+echo json_encode($chosen); -->
